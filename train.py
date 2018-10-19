@@ -7,12 +7,14 @@ from sklearn.model_selection import train_test_split
 from keras.models import Sequential
 from keras.layers.convolutional import Conv2D, MaxPooling2D
 from keras.layers.core import Flatten, Dense
+
+import config
 from helpers import resize_to_fit
 
 
-directory_path = os.path.expanduser('~/Documents/research/cropped_aligned/')
-MODEL_FILENAME = "age_estimation.hdf5"
-MODEL_LABELS_FILENAME = "model_labels_age_estimation.dat"
+directory_path = os.path.expanduser(config.directory_path)
+MODEL_FILENAME = config.MODEL_FILENAME
+MODEL_LABELS_FILENAME = config.MODEL_LABELS_FILENAME
 
 
 # initialize the data and labels
