@@ -91,3 +91,5 @@ model.fit(X_train, Y_train, validation_data=(X_test, Y_test), batch_size=32, epo
 
 # Save the trained model to disk
 model.save(MODEL_FILENAME)
+
+print('done')
