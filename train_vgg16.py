@@ -2,7 +2,8 @@ import cv2
 import pickle
 import os.path
 import numpy as np
-from keras.applications import VGG16
+from keras.layers import ZeroPadding2D, Convolution2D, MaxPooling2D, Dropout
+from keras.optimizers import SGD
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import train_test_split
 from keras.models import Sequential
@@ -19,8 +20,9 @@ MODEL_FILENAME = config.MODEL_FILENAME
 data = []
 labels = []
 
-epochs = 10
-image_size = 150
+epochs = config.EPOCHS
+image_size = config.IMAGE_SIZE
+batch_size = config.BATCH_SIZE
 
 # loop over the input images
 
@@ -33,14 +35,14 @@ for root, dirs, files in os.walk(directory_path):
             full_path = os.path.join(root, filename)
 
             image = cv2.imread(full_path)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            #image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
             # Resize the letter so it fits in a 20x20 pixel box
             #image = resize_to_fit(image, 20, 20)
             image = resize_to_fit(image, image_size, image_size)
 
             # Add a third channel dimension to the image to make Keras happy
-            image = np.expand_dims(image, axis=2)
+            #image = np.expand_dims(image, axis=2)
 
             label = int(os.path.basename(root))
 
@@ -66,30 +68,60 @@ Y_test = lb.transform(Y_test)
 with open(MODEL_LABELS_FILENAME, "wb") as f:
     pickle.dump(lb, f)
 
-# Build the neural network!
-vgg_conv = VGG16(weights='imagenet', include_top=False, input_shape=(image_size,image_size, 3))
 
-for layer in vgg_conv.layers[:-4]:
-    layer.trainable = False
-
-# Create the model
 model = Sequential()
+model.add(ZeroPadding2D((1, 1), input_shape=(image_size, image_size, 3)))
+model.add(Convolution2D(64, (3, 3), activation='relu'))
+model.add(ZeroPadding2D((1, 1)))
+model.add(Convolution2D(64, 3, 3, activation='relu'))
+model.add(MaxPooling2D((2, 2), strides=(2, 2)))
 
-# Add the vgg convolutional base model
-model.add(vgg_conv)
+model.add(ZeroPadding2D((1, 1)))
+model.add(Convolution2D(128, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1, 1)))
+model.add(Convolution2D(128, 3, 3, activation='relu'))
+model.add(MaxPooling2D((2, 2), strides=(2, 2)))
 
-# Hidden layer with 500 nodes
+model.add(ZeroPadding2D((1, 1)))
+model.add(Convolution2D(256, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1, 1)))
+model.add(Convolution2D(256, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1, 1)))
+model.add(Convolution2D(256, 3, 3, activation='relu'))
+model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+
+model.add(ZeroPadding2D((1, 1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1, 1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1, 1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+
+model.add(ZeroPadding2D((1, 1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1, 1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1, 1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+
 model.add(Flatten())
-model.add(Dense(1024, activation="relu"))
+model.add(Dense(4096, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(4096, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(17, activation='softmax'))
 
-# Output layer with 32 nodes (one for each possible letter/number we predict)
-model.add(Dense(17, activation="softmax"))
 
-# Ask Keras to build the TensorFlow model behind the scenes
-model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
+sgd = SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
+
+model.compile(loss="categorical_crossentropy", optimizer=sgd, metrics=["accuracy"])
+
+#model.fit(X_train, Y_train, batch_size=128, epochs=epochs, verbose=1)
 
 # Train the neural network
-model.fit(X_train, Y_train, validation_data=(X_test, Y_test), batch_size=32, epochs=epochs, verbose=1)
+model.fit(X_train, Y_train, validation_data=(X_test, Y_test), batch_size=batch_size, epochs=epochs, verbose=1)
 
 # Save the trained model to disk
 model.save(MODEL_FILENAME)
