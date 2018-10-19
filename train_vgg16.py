@@ -11,7 +11,7 @@ from keras.layers.core import Flatten, Dense
 import config
 from helpers import resize_to_fit
 
-directory_path = config.directory_path
+directory_path = os.path.expanduser(config.directory_path)
 MODEL_LABELS_FILENAME = config.MODEL_LABELS_FILENAME
 MODEL_FILENAME = config.MODEL_FILENAME
 
