@@ -2,15 +2,8 @@ import cv2
 import pickle
 import os.path
 import numpy as np
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras.layers import ZeroPadding2D, Convolution2D, MaxPooling2D, Dropout, BatchNormalization
-from keras.optimizers import SGD
-from keras.utils import to_categorical
-from sklearn.preprocessing import LabelBinarizer, LabelEncoder
+from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import train_test_split
-from keras.models import Sequential
-from keras.layers.core import Flatten, Dense
-
 import config
 from helpers import resize_to_fit
 
@@ -61,45 +54,43 @@ labels = np.array(labels)
 (X_train, X_test, Y_train, Y_test) = train_test_split(data, labels, test_size=0.3, random_state=0)
 
 # Convert the labels (letters) into one-hot encodings that Keras can work with
+lb = LabelBinarizer().fit(Y_train)
+Y_train = lb.transform(Y_train)
+Y_test = lb.transform(Y_test)
 
-Y_train = to_categorical(LabelEncoder().fit_transform(Y_train))
-
-Y_test = to_categorical(LabelEncoder().fit_transform(Y_test))
-
-
-model = Sequential()
-model.add(Flatten(input_shape=(image_size, image_size, 3)))
-model.add(Dense(4096, activation='relu'))
-model.add(BatchNormalization())
-model.add(Dropout(0.2))
-model.add(Dense(512, activation='relu'))
-model.add(BatchNormalization())
-model.add(Dropout(0.3))
-model.add(Dense(17, activation='softmax'))
+# Save the mapping from labels to one-hot encodings.
+# We'll need this later when we use the model to decode what it's predictions mean
+with open(MODEL_LABELS_FILENAME, "wb") as f:
+    pickle.dump(lb, f)
 
 
 
-#sgd = SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
+from keras.engine import  Model
+from keras.layers import Flatten, Dense, Input
+from keras_vggface.vggface import VGGFace
 
-model.compile(loss="categorical_crossentropy", optimizer='adam', metrics=["accuracy"])
+#custom parameters
+nb_class = 2
+hidden_dim = 512
+
+vgg_model = VGGFace(include_top=False, input_shape=(224, 224, 3))
+last_layer = vgg_model.get_layer('pool5').output
+x = Flatten(name='flatten')(last_layer)
+x = Dense(hidden_dim, activation='relu', name='fc6')(x)
+x = Dense(hidden_dim, activation='relu', name='fc7')(x)
+out = Dense(nb_class, activation='softmax', name='fc8')(x)
+custom_vgg_model = Model(vgg_model.input, out)
+
+
+
+
+
+model.compile(loss="categorical_crossentropy", optimizer=sgd, metrics=["accuracy"])
 
 #model.fit(X_train, Y_train, batch_size=128, epochs=epochs, verbose=1)
 
 # Train the neural network
-#model.fit(X_train, Y_train, validation_data=(X_test, Y_test), batch_size=batch_size, epochs=epochs, verbose=1)
-
-
-callbacks = EarlyStopping(monitor='val_loss', patience=1, verbose=1, mode='auto')
-# autosave best Model
-best_model_file = "fully_connected_dropout_weights.h5"
-best_model = ModelCheckpoint(best_model_file, monitor='val_acc', verbose=2, save_best_only=True)
-
-
-# In[16]:
-
-history = model.fit(X_train, Y_train, batch_size=120, nb_epoch=100,
-                    validation_data=(X_test, Y_test), shuffle=True, callbacks = [callbacks,best_model])
-
+model.fit(X_train, Y_train, validation_data=(X_test, Y_test), batch_size=batch_size, epochs=epochs, verbose=1)
 
 # Save the trained model to disk
 model.save(MODEL_FILENAME)
