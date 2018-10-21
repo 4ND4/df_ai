@@ -22,9 +22,9 @@ MODEL_FILENAME = config.MODEL_FILENAME
 data = []
 labels = []
 
-epochs = config.EPOCHS
-image_size = config.IMAGE_SIZE
-batch_size = config.BATCH_SIZE
+epochs = 100
+image_size = 80
+batch_size = 120
 
 # loop over the input images
 
@@ -97,8 +97,8 @@ best_model = ModelCheckpoint(best_model_file, monitor='val_acc', verbose=2, save
 
 # In[16]:
 
-history = model.fit(X_train, Y_train, batch_size=120, nb_epoch=100,
-                    validation_data=(X_test, Y_test), shuffle=True, callbacks = [callbacks,best_model])
+history = model.fit(X_train, Y_train, batch_size=batch_size, nb_epoch=epochs,
+                    validation_data=(X_test, Y_test), shuffle=True, callbacks=[callbacks, best_model])
 
 
 # Save the trained model to disk
