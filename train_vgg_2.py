@@ -2,8 +2,18 @@ import cv2
 import pickle
 import os.path
 import numpy as np
-from sklearn.preprocessing import LabelBinarizer
+from keras import Model
+from keras.applications import VGG16
+from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.layers import ZeroPadding2D, Convolution2D, MaxPooling2D, Dropout, BatchNormalization
+from keras.optimizers import SGD
+from keras.utils import to_categorical
+from keras_preprocessing.image import ImageDataGenerator
+from sklearn.preprocessing import LabelBinarizer, LabelEncoder
 from sklearn.model_selection import train_test_split
+from keras.models import Sequential
+from keras.layers.core import Flatten, Dense
+
 import config
 from helpers import resize_to_fit
 
@@ -15,9 +25,9 @@ MODEL_FILENAME = config.MODEL_FILENAME
 data = []
 labels = []
 
-epochs = config.EPOCHS
-image_size = config.IMAGE_SIZE
-batch_size = config.BATCH_SIZE
+epochs = 100
+image_size = 254
+batch_size = 100
 
 # loop over the input images
 
@@ -54,45 +64,78 @@ labels = np.array(labels)
 (X_train, X_test, Y_train, Y_test) = train_test_split(data, labels, test_size=0.3, random_state=0)
 
 # Convert the labels (letters) into one-hot encodings that Keras can work with
-lb = LabelBinarizer().fit(Y_train)
-Y_train = lb.transform(Y_train)
-Y_test = lb.transform(Y_test)
 
-# Save the mapping from labels to one-hot encodings.
-# We'll need this later when we use the model to decode what it's predictions mean
-with open(MODEL_LABELS_FILENAME, "wb") as f:
-    pickle.dump(lb, f)
+Y_train = to_categorical(LabelEncoder().fit_transform(Y_train))
+
+Y_test = to_categorical(LabelEncoder().fit_transform(Y_test))
 
 
+vgg16_base = VGG16(include_top=False, weights='imagenet', input_tensor=None, input_shape=(image_size, image_size, 3))
+# Note that the preprocessing of InceptionV3 is:
+# (x / 255 - 0.5) x 2
 
-from keras.engine import  Model
-from keras.layers import Flatten, Dense, Input
-from keras_vggface.vggface import VGGFace
-
-#custom parameters
-nb_class = 2
-hidden_dim = 512
-
-vgg_model = VGGFace(include_top=False, input_shape=(224, 224, 3))
-last_layer = vgg_model.get_layer('pool5').output
-x = Flatten(name='flatten')(last_layer)
-x = Dense(hidden_dim, activation='relu', name='fc6')(x)
-x = Dense(hidden_dim, activation='relu', name='fc7')(x)
-out = Dense(nb_class, activation='softmax', name='fc8')(x)
-custom_vgg_model = Model(vgg_model.input, out)
-
-
+print('Adding new layers...')
+output = vgg16_base.get_layer(index=-1).output
+output = Flatten()(output)
+# let's add a fully-connected layer
+output = Dense(4096, activation="relu")(output)
+output = BatchNormalization()(output)
+output = Dropout(0.5)(output)
+output = Dense(512, activation="relu")(output)
+output = BatchNormalization()(output)
+output = Dropout(0.5)(output)
+# and a logistic layer -- let's say we have 200 classes
+output = Dense(17, activation='softmax')(output)
 
 
+vgg16_model = Model(vgg16_base.input, output)
+#InceptionV3_model.summary()
 
-model.compile(loss="categorical_crossentropy", optimizer=sgd, metrics=["accuracy"])
+
+# In[ ]:
+
+
+for layer in vgg16_model.layers[:19]:
+    layer.trainable = False
+
+
+vgg16_model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
 
 #model.fit(X_train, Y_train, batch_size=128, epochs=epochs, verbose=1)
 
 # Train the neural network
-model.fit(X_train, Y_train, validation_data=(X_test, Y_test), batch_size=batch_size, epochs=epochs, verbose=1)
+#model.fit(X_train, Y_train, validation_data=(X_test, Y_test), batch_size=batch_size, epochs=epochs, verbose=1)
+
+
+callbacks = EarlyStopping(monitor='val_loss', patience=1, verbose=1, mode='auto')
+# autosave best Model
+best_model_file = "data_augmented_weights.h5"
+best_model = ModelCheckpoint(best_model_file, monitor='val_acc', verbose=2, save_best_only=True)
+
+# In[16]:
+
+
+train_datagen = ImageDataGenerator(
+        shear_range=0.1,
+        zoom_range=0.1,
+        rotation_range=10.,
+        width_shift_range=0.1,
+        height_shift_range=0.1,
+        horizontal_flip=True)
+
+
+val_datagen = ImageDataGenerator()
+
+
+history = vgg16_model.fit_generator(train_datagen.flow(X_train, Y_train, batch_size=batch_size), nb_epoch=epochs,
+                                    samples_per_epoch=len(X_train), validation_data=val_datagen.flow(
+        X_test, Y_test, batch_size=64, shuffle=False), nb_val_samples=len(X_test), callbacks=[callbacks, best_model])
+
+#history = vgg16_model.fit(X_train, Y_train, batch_size=batch_size, nb_epoch=epochs,
+#                          validation_data=(X_test, Y_test), shuffle=True, callbacks=[callbacks, best_model])
+
 
 # Save the trained model to disk
-model.save(MODEL_FILENAME)
+#vgg16_model.save(MODEL_FILENAME)
 
 print('done')
