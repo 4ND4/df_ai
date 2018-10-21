@@ -102,6 +102,5 @@ history = model.fit(X_train, Y_train, batch_size=batch_size, nb_epoch=epochs,
 
 
 # Save the trained model to disk
-model.save(MODEL_FILENAME)
 
 print('done')

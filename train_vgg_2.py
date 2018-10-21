@@ -131,11 +131,4 @@ history = vgg16_model.fit_generator(train_datagen.flow(X_train, Y_train, batch_s
                                     samples_per_epoch=len(X_train), validation_data=val_datagen.flow(
         X_test, Y_test, batch_size=64, shuffle=False), nb_val_samples=len(X_test), callbacks=[callbacks, best_model])
 
-#history = vgg16_model.fit(X_train, Y_train, batch_size=batch_size, nb_epoch=epochs,
-#                          validation_data=(X_test, Y_test), shuffle=True, callbacks=[callbacks, best_model])
-
-
-# Save the trained model to disk
-#vgg16_model.save(MODEL_FILENAME)
-
 print('done')
