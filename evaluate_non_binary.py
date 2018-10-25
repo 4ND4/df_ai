@@ -35,17 +35,17 @@ model.compile(
     optimizer='adam',
     metrics=['accuracy'])
 
-for i in range(1,26):
+with open('eval.csv', "w") as csv:
+    columnTitleRow = "real_age, real_range, estimated_range\n"
+    csv.write(columnTitleRow)
 
-    predict_image_directory = os.path.expanduser(validation_directory + str(i))
+    for i in range(1,3):
 
-    files_ = [f for f in os.listdir(predict_image_directory) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        predict_image_directory = os.path.expanduser(validation_directory + str(i))
 
-    list_images_labels = []
+        files_ = [f for f in os.listdir(predict_image_directory) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
-    with open('eval.csv', "w") as csv:
-        columnTitleRow = "real_age, real_range, estimated_range\n"
-        csv.write(columnTitleRow)
+        list_images_labels = []
 
         for f in files_:
             data = []
