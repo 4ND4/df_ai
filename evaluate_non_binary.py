@@ -1,20 +1,26 @@
 import os
-
+import cv2
 from keras.models import load_model
 from keras.preprocessing import image
+from keras.optimizers import SGD
 import numpy as np
+from helpers import resize_to_fit
 
 
-img_width, img_height = 254, 254
-validation_directory = os.path.expanduser('~/euro13k/euro13k/')
-model_path = os.path.expanduser('visage_model_vgg16_100_600s.h5')
+image_size = 254
+img_width, img_height = image_size, image_size
+validation_directory = os.path.expanduser('~/euro13k/validation/testing_split/')
+model_path = os.path.expanduser('data_augmented_euro13k_vgg16.h5')
+data = []
 
 # load the model we saved
 model = load_model(model_path)
 
+sgd = SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
+
 model.compile(
     loss='categorical_crossentropy',
-    optimizer='adam',
+    optimizer=sgd,
     metrics=['accuracy'])
 
 for i in range(1,26):
@@ -31,15 +37,23 @@ for i in range(1,26):
         for f in files_:
             real_age = i
 
-            img = image.load_img(os.path.join(predict_image_directory, f), target_size=(img_width, img_height))
-            x = image.img_to_array(img)
-            x = np.expand_dims(x, axis=0)
+#            img = image.load_img(os.path.join(predict_image_directory, f), target_size=(img_width, img_height))
+            image = cv2.imread(os.path.join(predict_image_directory, f)
+            image = resize_to_fit(image, image_size, image_size)
+            data.append(image)
+            data = np.array(data, dtype="float") / 255.0
 
-            value = model.predict_classes(x)
+#            x = image.img_to_array(img)
+#            x = np.expand_dims(x, axis=0)
+
+            value = model.predict(data)
+            #rounded = np.argmax(value)
+            #print(rounded)
+            print(value)
 
             list_images_labels.append((f, real_age, value[0]))
 
             row = str(real_age) + "," + str(value[0]) + "\n"
             csv.write(row)
 
-            print(real_age, value[0])
+            print(real_age, value)
