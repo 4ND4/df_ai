@@ -2,6 +2,7 @@ import cv2
 import pickle
 import os.path
 import numpy as np
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import train_test_split
 from keras.models import Sequential
@@ -13,15 +14,15 @@ from helpers import resize_to_fit
 
 
 directory_path = os.path.expanduser(config.directory_path)
-MODEL_FILENAME = config.MODEL_FILENAME
 MODEL_LABELS_FILENAME = config.MODEL_LABELS_FILENAME
 
 
 # initialize the data and labels
 data = []
 labels = []
-
-epochs = 30
+batch_size = 64
+epochs = 100
+image_size = 150
 
 # loop over the input images
 
@@ -38,7 +39,7 @@ for root, dirs, files in os.walk(directory_path):
 
             # Resize the letter so it fits in a 20x20 pixel box
             #image = resize_to_fit(image, 20, 20)
-            image = resize_to_fit(image, 150, 150)
+            image = resize_to_fit(image, image_size, image_size)
 
             # Add a third channel dimension to the image to make Keras happy
             image = np.expand_dims(image, axis=2)
@@ -71,7 +72,7 @@ with open(MODEL_LABELS_FILENAME, "wb") as f:
 model = Sequential()
 
 # First convolutional layer with max pooling
-model.add(Conv2D(20, (5, 5), padding="same", input_shape=(150, 150, 1), activation="relu"))
+model.add(Conv2D(20, (5, 5), padding="same", input_shape=(image_size, image_size, 1), activation="relu"))
 model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
 
 # Second convolutional layer with max pooling
@@ -89,9 +90,15 @@ model.add(Dense(5, activation="softmax"))
 model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
 
 # Train the neural network
-model.fit(X_train, Y_train, validation_data=(X_test, Y_test), batch_size=32, epochs=epochs, verbose=1)
 
-# Save the trained model to disk
-model.save(MODEL_FILENAME)
+callbacks = EarlyStopping(monitor='val_loss', patience=1, verbose=1, mode='auto')
+# autosave best Model
+best_model_file = "fully_connected_dropout_weights.h5"
+best_model = ModelCheckpoint(best_model_file, monitor='val_acc', verbose=2, save_best_only=True)
+
+# In[16]:
+
+history = model.fit(X_train, Y_train, batch_size=batch_size, nb_epoch=epochs,
+                    validation_data=(X_test, Y_test), shuffle=True, callbacks=[callbacks, best_model])
 
 print('done')
