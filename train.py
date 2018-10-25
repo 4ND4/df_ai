@@ -21,7 +21,7 @@ MODEL_LABELS_FILENAME = config.MODEL_LABELS_FILENAME
 data = []
 labels = []
 
-epochs = 10
+epochs = 30
 
 # loop over the input images
 
@@ -43,7 +43,7 @@ for root, dirs, files in os.walk(directory_path):
             # Add a third channel dimension to the image to make Keras happy
             image = np.expand_dims(image, axis=2)
 
-            label = int(os.path.basename(root))
+            label = os.path.basename(root)
 
             # Add the letter image and it's label to our training data
             data.append(image)
@@ -83,7 +83,7 @@ model.add(Flatten())
 model.add(Dense(500, activation="relu"))
 
 # Output layer with 32 nodes (one for each possible letter/number we predict)
-model.add(Dense(17, activation="softmax"))
+model.add(Dense(5, activation="softmax"))
 
 # Ask Keras to build the TensorFlow model behind the scenes
 model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
