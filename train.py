@@ -22,7 +22,7 @@ data = []
 labels = []
 batch_size = 64
 epochs = 100
-image_size = 150
+image_size = 200
 
 # loop over the input images
 
