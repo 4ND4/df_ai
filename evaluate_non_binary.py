@@ -14,8 +14,8 @@ model_path = os.path.expanduser('data_aug_200_13k.h5')
 range_dict = dict()
 
 range_dict[0] = [x for x in range(0,6)]
-range_dict[1] = [x for x in range(6,11)]
-range_dict[2] = [x for x in range(11,16)]
+range_dict[1] = [x for x in range(6,12)]
+range_dict[2] = [x for x in range(12,16)]
 range_dict[3] = [x for x in range(16,18)]
 range_dict[4] = [x for x in range(18,26)]
 
@@ -39,7 +39,7 @@ with open('eval.csv', "w") as csv:
     columnTitleRow = "real_age, real_range, estimated_range\n"
     csv.write(columnTitleRow)
 
-    for i in range(1,3):
+    for i in range(1,26):
 
         predict_image_directory = os.path.expanduser(validation_directory + str(i))
 
@@ -58,6 +58,7 @@ with open('eval.csv', "w") as csv:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             image = resize_to_fit(image, image_size, image_size)
             #image = np.expand_dims(image, axis=2)
+            #image = image / 255.0
 
             #data = np.array(data, dtype="float") / 255.0
 
@@ -74,4 +75,4 @@ with open('eval.csv', "w") as csv:
             row = str(real_age) + "," + str(get_range(real_age)) + ',' + str(value[0]) + "\n"
             csv.write(row)
 
-            print(real_age, value[0])
+            print(str(get_range(real_age)), value[0])
