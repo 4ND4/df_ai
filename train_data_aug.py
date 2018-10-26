@@ -3,6 +3,7 @@ import pickle
 import os.path
 import numpy as np
 from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras_preprocessing.image import ImageDataGenerator
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import train_test_split
 from keras.models import Sequential
@@ -16,13 +17,13 @@ from helpers import resize_to_fit
 directory_path = os.path.expanduser(config.directory_path)
 MODEL_LABELS_FILENAME = config.MODEL_LABELS_FILENAME
 
+
 # initialize the data and labels
 data = []
 labels = []
 batch_size = 64
 epochs = 100
 image_size = 200
-
 model_name = 'data_aug_{}_13k.h5'.format(image_size)
 
 # loop over the input images
@@ -99,7 +100,21 @@ best_model = ModelCheckpoint(best_model_file, monitor='val_acc', verbose=2, save
 
 # In[16]:
 
-history = model.fit(X_train, Y_train, batch_size=batch_size, nb_epoch=epochs,
-                    validation_data=(X_test, Y_test), shuffle=True, callbacks=[callbacks, best_model])
+train_datagen = ImageDataGenerator(
+        shear_range=0.1,
+        zoom_range=0.1,
+        rotation_range=10.,
+        width_shift_range=0.1,
+        height_shift_range=0.1,
+        horizontal_flip=True)
+
+val_datagen = ImageDataGenerator()
+
+history = model.fit_generator(train_datagen.flow(X_train, Y_train, batch_size=batch_size), nb_epoch=epochs,
+                                    samples_per_epoch=len(X_train), validation_data=val_datagen.flow(
+        X_test, Y_test, batch_size=64, shuffle=False), nb_val_samples=len(X_test), callbacks=[callbacks, best_model])
+
+#history = model.fit(X_train, Y_train, batch_size=batch_size, nb_epoch=epochs,
+#                    validation_data=(X_test, Y_test), shuffle=True, callbacks=[callbacks, best_model])
 
 print('done')
